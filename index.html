@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ストレッチループ</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ストレッチ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#e9eee9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b2220" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Nunito:wght@600;800&display=swap">
+<style>
+/* Layout: one-screen app. Small header, a large tappable ring in the middle, lap chips and two buttons below. Settings slide up as a bottom sheet. */
+:root {
+  --bg: #e9eee9;
+  --surface: #f6f8f4;
+  --surface-2: #dfe6e0;
+  --fg: #2e3934;
+  --muted: #6c7a73;
+  --track: #d3dcd5;
+  --lap-1: #6f9f88;
+  --lap-2: #7c9cb6;
+  --lap-3: #a093bd;
+  --lap-4: #c4a174;
+  --lap-5: #c48a8a;
+  --lap-6: #7fa9a6;
+  --shadow: 0 10px 30px rgba(46, 70, 58, .12);
+  --font-ui: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+  --font-num: "Nunito", "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif;
+  --radius: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b2220; --surface: #242d2a; --surface-2: #2e3935; --fg: #e2e9e4; --muted: #94a39b; --track: #33403b;
+    --lap-1: #86b8a0; --lap-2: #92b2cc; --lap-3: #b5a9d2; --lap-4: #d6b48a; --lap-5: #d69e9e; --lap-6: #92beba;
+    --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b2220; --surface: #242d2a; --surface-2: #2e3935; --fg: #e2e9e4; --muted: #94a39b; --track: #33403b;
+  --lap-1: #86b8a0; --lap-2: #92b2cc; --lap-3: #b5a9d2; --lap-4: #d6b48a; --lap-5: #d69e9e; --lap-6: #92beba;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, .stage:focus-visible {
+  outline: 3px solid var(--accent, var(--lap-1));
+  outline-offset: 3px;
+}
+
+.app {
+  --accent: var(--lap-1);
+  height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 12px 18px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.brand { font-weight: 700; font-size: 16px; letter-spacing: .04em; }
+.round {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 14px;
+  margin-left: 8px;
+  font-weight: 600;
+}
+.icon-btn {
+  width: 44px; height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+.icon-btn svg { width: 22px; height: 22px; stroke: var(--fg); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn[aria-pressed="false"] svg { stroke: var(--muted); }
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  border-radius: 40px;
+  position: relative;
+}
+.ring-wrap {
+  position: relative;
+  width: min(84vw, 52vh, 420px);
+  aspect-ratio: 1;
+  max-width: 100%;
+}
+.ring { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.ring .track { stroke: var(--track); }
+.ring .bar { stroke: var(--accent); transition: stroke .5s ease; }
+.ring .disc { fill: var(--surface); }
+.center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px;
+  text-align: center;
+}
+.lap-name {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: .08em;
+  color: var(--accent);
+  transition: color .5s ease;
+}
+.time {
+  font-family: var(--font-num);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(64px, 22vw, 120px);
+  line-height: 1;
+  letter-spacing: -.02em;
+}
+.hint { font-size: 13px; color: var(--muted); }
+.stage.running .ring-wrap { animation: breathe 6s ease-in-out infinite; }
+@keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015); } }
+
+.laps {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--muted);
+  border: 2px solid transparent;
+  transition: border-color .3s, color .3s;
+}
+.chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.chip.on { border-color: var(--c); color: var(--fg); }
+
+.bottom { display: flex; gap: 10px; }
+.btn {
+  flex: 1;
+  min-height: 52px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.btn:active, .icon-btn:active { transform: scale(.97); }
+
+/* Sheet */
+.scrim {
+  position: fixed; inset: 0;
+  background: rgba(20, 30, 25, .35);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 10;
+}
+.sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 86%;
+  box-sizing: border-box;
+  background: var(--bg);
+  border-radius: 30px 30px 0 0;
+  padding-inline: 16px;
+  padding-block: 10px calc(18px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+  animation: up .28s ease-out;
+}
+@keyframes up { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
+.grab { width: 40px; height: 5px; border-radius: 3px; background: var(--track); margin: 0 auto; }
+.sheet h2 { margin: 0; font-size: 18px; text-wrap: balance; }
+.sheet .sub { margin: -8px 0 0; font-size: 13px; color: var(--muted); }
+.rows { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto auto;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 10px 10px 10px 14px;
+}
+.row .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
+.row .label { font-weight: 700; font-size: 14px; min-width: 0; }
+.step {
+  width: 40px; height: 40px;
+  border: none; border-radius: 50%;
+  background: var(--surface-2);
+  font-family: var(--font-num); font-weight: 800; font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+}
+.sec-input {
+  width: 64px; height: 40px;
+  box-sizing: border-box;
+  border: 2px solid var(--surface-2);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--fg);
+  text-align: center;
+  font-family: var(--font-num); font-weight: 800; font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.sec-input::-webkit-outer-spin-button, .sec-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.del {
+  width: 36px; height: 36px;
+  border: none; border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: grid; place-items: center;
+}
+.del svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.del:disabled { opacity: .25; cursor: default; }
+.unit { font-size: 12px; color: var(--muted); margin-left: -4px; }
+.add {
+  border: 2px dashed var(--track);
+  background: transparent;
+  border-radius: var(--radius);
+  min-height: 52px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+.add:disabled { opacity: .4; cursor: default; }
+.total { font-size: 13px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+.done { background: var(--lap-1); color: #fff; box-shadow: none; }
+:root[data-theme="dark"] .done { color: #14201b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .done { color: #14201b; } }
+
+@media (max-width: 360px) {
+  .row { grid-template-columns: auto 1fr auto auto auto; }
+  .row .unit { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage.running .ring-wrap { animation: none; }
+  .sheet { animation: none; }
+  .ring .bar, .lap-name { transition: none; }
+}
+</style>
+
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; height: 100%; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="app" id="app">
+  <header class="top">
+    <div><span class="brand">ストレッチループ</span><span class="round" id="round">1周目</span></div>
+    <button class="icon-btn" id="soundBtn" aria-pressed="true" aria-label="音のオン・オフ">
+      <svg viewBox="0 0 24 24" id="soundIcon"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+    </button>
+  </header>
+
+  <section class="stage" id="stage" role="button" tabindex="0" aria-label="タップでスタート・ストップ">
+    <div class="ring-wrap">
+      <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="disc" cx="100" cy="100" r="80"/>
+        <circle class="track" cx="100" cy="100" r="90" fill="none" stroke-width="10"/>
+        <circle class="bar" id="bar" cx="100" cy="100" r="90" fill="none" stroke-width="10" stroke-linecap="round"/>
+      </svg>
+      <div class="center">
+        <div class="lap-name" id="lapName">ラップ 1 / 2</div>
+        <div class="time" id="time">30</div>
+        <div class="hint" id="hint">タップでスタート</div>
+      </div>
+    </div>
+  </section>
+
+  <ol class="laps" id="lapStrip"></ol>
+
+  <div class="bottom">
+    <button class="btn" id="resetBtn">
+      <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>リセット
+    </button>
+    <button class="btn" id="editBtn">
+      <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>ラップ設定
+    </button>
+  </div>
+</main>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="grab"></div>
+    <h2 id="sheetTitle">ラップ設定</h2>
+    <p class="sub">上から順に繰り返します。止めるまでループします。</p>
+    <div class="rows" id="rows"></div>
+    <button class="add" id="addBtn">＋ ラップを追加</button>
+    <div class="total" id="total"></div>
+    <button class="btn done" id="doneBtn">完了</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const DEFAULT_LAPS = [30, 10];
+  const MAX_LAPS = 6;
+  const COLORS = ['--lap-1', '--lap-2', '--lap-3', '--lap-4', '--lap-5', '--lap-6'];
+  const CIRC = 2 * Math.PI * 90;
+
+  const $ = id => document.getElementById(id);
+  const app = $('app'), stage = $('stage'), bar = $('bar');
+  const timeEl = $('time'), lapNameEl = $('lapName'), hintEl = $('hint'), roundEl = $('round');
+  const strip = $('lapStrip'), scrim = $('scrim'), rows = $('rows');
+
+  function load(key, fallback) {
+    try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; }
+  }
+  function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+
+  let laps = load('laps', DEFAULT_LAPS);
+  if (!Array.isArray(laps) || !laps.length || laps.some(n => !(n >= 1))) laps = DEFAULT_LAPS.slice();
+  let soundOn = load('sound', true) !== false;
+
+  const st = { running: false, idx: 0, elapsed: 0, startedAt: 0, round: 1, lastTick: null, raf: 0 };
+
+  /* ---------- Audio: "ambient" session so music keeps playing ---------- */
+  let ctx = null;
+  function ensureAudio() {
+    if (!soundOn) return null;
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = 'ambient';
+    } catch {}
+    if (!ctx) {
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  }
+  function tone(freq, start, dur, vol) {
+    const c = ctx; if (!c) return;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    const t = c.currentTime + start;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  function chime(idx) {
+    if (!soundOn || !ensureAudio()) return;
+    const base = [660, 523, 587, 494, 698, 440][idx % 6];
+    tone(base, 0, 0.5, 0.28);
+    tone(base * 1.5, 0.12, 0.6, 0.18);
+  }
+  function tick() {
+    if (!soundOn || !ensureAudio()) return;
+    tone(880, 0, 0.12, 0.12);
+  }
+
+  /* ---------- Wake lock (keep screen on while running) ---------- */
+  let wakeLock = null;
+  async function lockScreen() {
+    try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch {}
+  }
+  function unlockScreen() { try { wakeLock && wakeLock.release(); } catch {} wakeLock = null; }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && st.running) { lockScreen(); loop(); }
+  });
+
+  /* ---------- Timer ---------- */
+  const colorOf = i => `var(${COLORS[i % COLORS.length]})`;
+  function elapsedNow() { return st.running ? (performance.now() - st.startedAt) / 1000 : st.elapsed; }
+
+  function advance() {
+    if (!st.running) return;
+    let changed = false;
+    while ((performance.now() - st.startedAt) / 1000 >= laps[st.idx]) {
+      st.startedAt += laps[st.idx] * 1000;
+      st.idx = (st.idx + 1) % laps.length;
+      if (st.idx === 0) st.round++;
+      st.lastTick = null;
+      changed = true;
+    }
+    if (changed) { chime(st.idx); renderStrip(); }
+    const rem = laps[st.idx] - elapsedNow();
+    const remSec = Math.ceil(rem);
+    if (laps[st.idx] > 3 && remSec <= 3 && remSec >= 1 && st.lastTick !== remSec) {
+      st.lastTick = remSec; tick();
+    }
+  }
+
+  function loop() {
+    cancelAnimationFrame(st.raf);
+    const step = () => {
+      if (!st.running) return;
+      advance(); render();
+      st.raf = requestAnimationFrame(step);
+    };
+    st.raf = requestAnimationFrame(step);
+  }
+
+  function start() {
+    ensureAudio();
+    st.running = true;
+    st.startedAt = performance.now() - st.elapsed * 1000;
+    st.lastTick = null;
+    if (st.elapsed === 0) chime(st.idx);
+    lockScreen(); loop(); render();
+  }
+  function stop() {
+    st.elapsed = elapsedNow();
+    st.running = false;
+    cancelAnimationFrame(st.raf);
+    unlockScreen(); render();
+  }
+  function reset() {
+    st.running = false; cancelAnimationFrame(st.raf); unlockScreen();
+    st.idx = 0; st.elapsed = 0; st.round = 1; st.lastTick = null;
+    renderStrip(); render();
+  }
+  function toggle() { st.running ? stop() : start(); }
+
+  /* ---------- Render ---------- */
+  function fmt(sec) {
+    const s = Math.max(0, Math.ceil(sec - 1e-6));
+    if (s < 60) return String(s);
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+  function render() {
+    const dur = laps[st.idx];
+    const el = Math.min(elapsedNow(), dur);
+    const rem = dur - el;
+    timeEl.textContent = fmt(rem);
+    lapNameEl.textContent = `ラップ ${st.idx + 1} / ${laps.length}`;
+    roundEl.textContent = `${st.round}周目`;
+    app.style.setProperty('--accent', colorOf(st.idx));
+    bar.style.strokeDasharray = CIRC;
+    bar.style.strokeDashoffset = CIRC * (el / dur);
+    stage.classList.toggle('running', st.running);
+    hintEl.textContent = st.running ? 'タップで一時停止' : (st.elapsed > 0 ? 'タップで再開' : 'タップでスタート');
+  }
+  function renderStrip() {
+    strip.innerHTML = '';
+    laps.forEach((s, i) => {
+      const li = document.createElement('li');
+      li.className = 'chip' + (i === st.idx ? ' on' : '');
+      li.style.setProperty('--c', colorOf(i));
+      li.innerHTML = `<span class="dot"></span>${fmt(s)}${s < 60 ? '<small>秒</small>' : ''}`;
+      strip.appendChild(li);
+    });
+  }
+
+  /* ---------- Editor ---------- */
+  let editedLaps = null;
+  function openEditor() {
+    if (st.running) stop();
+    editedLaps = laps.slice();
+    renderRows();
+    scrim.hidden = false;
+  }
+  function closeEditor() {
+    const changed = JSON.stringify(editedLaps) !== JSON.stringify(laps);
+    laps = editedLaps.slice();
+    save('laps', laps);
+    scrim.hidden = true;
+    if (changed) reset(); else { renderStrip(); render(); }
+  }
+  const clamp = n => Math.min(3600, Math.max(1, Math.round(n) || 1));
+  function renderRows() {
+    rows.innerHTML = '';
+    editedLaps.forEach((s, i) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.style.setProperty('--c', colorOf(i));
+      row.innerHTML = `
+        <span class="dot"></span>
+        <span class="label">ラップ ${i + 1}</span>
+        <button class="step" data-act="minus" aria-label="ラップ${i + 1}を5秒減らす">−</button>
+        <input class="sec-input" id="lap-sec-${i}" type="number" inputmode="numeric" min="1" max="3600" value="${s}" aria-label="ラップ${i + 1}の秒数">
+        <button class="step" data-act="plus" aria-label="ラップ${i + 1}を5秒増やす">＋</button>
+        <button class="del" data-act="del" aria-label="ラップ${i + 1}を削除" ${editedLaps.length <= 1 ? 'disabled' : ''}>
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>`;
+      const input = row.querySelector('input');
+      row.querySelector('[data-act="minus"]').onclick = () => { editedLaps[i] = clamp(editedLaps[i] - 5); input.value = editedLaps[i]; renderTotal(); };
+      row.querySelector('[data-act="plus"]').onclick = () => { editedLaps[i] = clamp(editedLaps[i] + 5); input.value = editedLaps[i]; renderTotal(); };
+      row.querySelector('[data-act="del"]').onclick = () => { editedLaps.splice(i, 1); renderRows(); };
+      input.addEventListener('input', () => { if (input.value !== '') { editedLaps[i] = clamp(+input.value); renderTotal(); } });
+      input.addEventListener('change', () => { editedLaps[i] = clamp(+input.value); input.value = editedLaps[i]; renderTotal(); });
+      input.addEventListener('focus', () => input.select());
+      rows.appendChild(row);
+    });
+    $('addBtn').disabled = editedLaps.length >= MAX_LAPS;
+    renderTotal();
+  }
+  function renderTotal() {
+    const t = editedLaps.reduce((a, b) => a + b, 0);
+    const m = Math.floor(t / 60), s = t % 60;
+    $('total').textContent = `1周 ${m ? m + '分' : ''}${s ? s + '秒' : ''}・${editedLaps.length}ラップ`;
+  }
+
+  /* ---------- Events ---------- */
+  stage.addEventListener('click', toggle);
+  stage.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); } });
+  $('resetBtn').addEventListener('click', reset);
+  $('editBtn').addEventListener('click', openEditor);
+  $('doneBtn').addEventListener('click', closeEditor);
+  $('addBtn').addEventListener('click', () => {
+    if (editedLaps.length >= MAX_LAPS) return;
+    editedLaps.push(editedLaps.length % 2 === 0 ? 30 : 10);
+    renderRows();
+    const last = rows.lastElementChild; last && last.scrollIntoView({ block: 'nearest' });
+  });
+  scrim.addEventListener('click', e => { if (e.target === scrim) closeEditor(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !scrim.hidden) closeEditor(); });
+
+  const soundBtn = $('soundBtn');
+  function renderSound() {
+    soundBtn.setAttribute('aria-pressed', String(soundOn));
+    $('soundIcon').innerHTML = soundOn
+      ? '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/>'
+      : '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/>';
+  }
+  soundBtn.addEventListener('click', () => { soundOn = !soundOn; save('sound', soundOn); renderSound(); if (soundOn) ensureAudio(); });
+
+  renderSound(); renderStrip(); render();
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+
+</body>
+</html>
