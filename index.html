@@ -274,26 +274,34 @@ button:focus-visible, input:focus-visible, .stage:focus-visible {
 .preset[aria-pressed="true"] .num { background: var(--lap-1); color: var(--bg); }
 .rows { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
 .row {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto auto auto;
-  align-items: center;
-  gap: 8px;
+  display: flex; flex-direction: column; gap: 8px;
   background: var(--surface);
   border-radius: var(--radius);
-  padding: 10px 10px 10px 14px;
+  padding: 8px 10px 12px 14px;
 }
-.row .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
-.row .label { font-weight: 700; font-size: 14px; min-width: 0; }
+.row-head { display: flex; align-items: center; gap: 8px; }
+.row .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex-shrink: 0; }
+.row .label { font-weight: 700; font-size: 14px; flex: 1; min-width: 0; }
+.adj {
+  display: grid;
+  grid-template-columns: 24px 40px 40px minmax(52px, 1fr) 40px 40px;
+  align-items: center;
+  gap: 8px 6px;
+}
+.adj-label { font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; }
 .step {
   width: 40px; height: 40px;
   border: none; border-radius: 50%;
   background: var(--surface-2);
-  font-family: var(--font-num); font-weight: 800; font-size: 20px;
+  font-family: var(--font-num); font-weight: 800; font-size: 14px;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
   line-height: 1;
+  padding: 0;
 }
-.sec-input {
-  width: 64px; height: 40px;
+.step.big { font-size: 13px; background: transparent; border: 2px solid var(--surface-2); }
+.num-input {
+  width: 100%; height: 40px;
   box-sizing: border-box;
   border: 2px solid var(--surface-2);
   border-radius: 14px;
@@ -304,7 +312,7 @@ button:focus-visible, input:focus-visible, .stage:focus-visible {
   font-variant-numeric: tabular-nums;
   -moz-appearance: textfield;
 }
-.sec-input::-webkit-outer-spin-button, .sec-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.num-input::-webkit-outer-spin-button, .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .del {
   width: 36px; height: 36px;
   border: none; border-radius: 50%;
@@ -315,7 +323,6 @@ button:focus-visible, input:focus-visible, .stage:focus-visible {
 }
 .del svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
 .del:disabled { opacity: .25; cursor: default; }
-.unit { font-size: 12px; color: var(--muted); margin-left: -4px; }
 .add {
   border: 2px dashed var(--track);
   background: transparent;
@@ -332,8 +339,10 @@ button:focus-visible, input:focus-visible, .stage:focus-visible {
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .done { color: #14201b; } }
 
 @media (max-width: 360px) {
-  .row { grid-template-columns: auto 1fr auto auto auto; }
-  .row .unit { display: none; }
+  .adj { grid-template-columns: 22px 36px 36px minmax(48px, 1fr) 36px 36px; gap: 8px 5px; }
+  .step { width: 36px; height: 36px; }
+  .vol { width: 72px; }
+  .brand { font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .stage.running .ring-wrap { animation: none; }
@@ -573,29 +582,50 @@ body { margin: 0; }
     scrim.hidden = true;
     if (changed) reset(); else { renderStrip(); render(); }
   }
-  const clamp = n => Math.min(3600, Math.max(1, Math.round(n) || 1));
+  const clamp = n => Math.min(3599, Math.max(1, Math.round(n) || 1));
   function renderRows() {
     rows.innerHTML = '';
     editedLaps.forEach((s, i) => {
       const row = document.createElement('div');
       row.className = 'row';
       row.style.setProperty('--c', colorOf(i));
+      const n = i + 1;
       row.innerHTML = `
-        <span class="dot"></span>
-        <span class="label">ラップ ${i + 1}</span>
-        <button class="step" data-act="minus" aria-label="ラップ${i + 1}を5秒減らす">−</button>
-        <input class="sec-input" id="lap-sec-${i}" type="number" inputmode="numeric" min="1" max="3600" value="${s}" aria-label="ラップ${i + 1}の秒数">
-        <button class="step" data-act="plus" aria-label="ラップ${i + 1}を5秒増やす">＋</button>
-        <button class="del" data-act="del" aria-label="ラップ${i + 1}を削除" ${editedLaps.length <= 1 ? 'disabled' : ''}>
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>`;
-      const input = row.querySelector('input');
-      row.querySelector('[data-act="minus"]').onclick = () => { editedLaps[i] = clamp(editedLaps[i] - 5); input.value = editedLaps[i]; renderTotal(); };
-      row.querySelector('[data-act="plus"]').onclick = () => { editedLaps[i] = clamp(editedLaps[i] + 5); input.value = editedLaps[i]; renderTotal(); };
+        <div class="row-head">
+          <span class="dot"></span>
+          <span class="label">ラップ ${n}</span>
+          <button class="del" data-act="del" aria-label="ラップ${n}を削除" ${editedLaps.length <= 1 ? 'disabled' : ''}>
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div class="adj">
+          <span class="adj-label">分</span>
+          <span></span>
+          <button class="step" data-d="-60" aria-label="ラップ${n}を1分減らす">−1</button>
+          <input class="num-input" id="lap-min-${i}" type="number" inputmode="numeric" min="0" max="59" aria-label="ラップ${n}の分">
+          <button class="step" data-d="60" aria-label="ラップ${n}を1分増やす">＋1</button>
+          <span></span>
+          <span class="adj-label">秒</span>
+          <button class="step big" data-d="-5" aria-label="ラップ${n}を5秒減らす">−5</button>
+          <button class="step" data-d="-1" aria-label="ラップ${n}を1秒減らす">−1</button>
+          <input class="num-input" id="lap-sec-${i}" type="number" inputmode="numeric" min="0" max="59" aria-label="ラップ${n}の秒">
+          <button class="step" data-d="1" aria-label="ラップ${n}を1秒増やす">＋1</button>
+          <button class="step big" data-d="5" aria-label="ラップ${n}を5秒増やす">＋5</button>
+        </div>`;
+      const minIn = row.querySelector(`#lap-min-${i}`), secIn = row.querySelector(`#lap-sec-${i}`);
+      const show = () => { minIn.value = Math.floor(editedLaps[i] / 60); secIn.value = editedLaps[i] % 60; };
+      const fromInputs = () => clamp((parseInt(minIn.value, 10) || 0) * 60 + (parseInt(secIn.value, 10) || 0));
+      show();
+      row.querySelectorAll('[data-d]').forEach(btn => btn.onclick = () => {
+        editedLaps[i] = clamp(editedLaps[i] + +btn.dataset.d);
+        show(); renderTotal();
+      });
       row.querySelector('[data-act="del"]').onclick = () => { editedLaps.splice(i, 1); renderRows(); };
-      input.addEventListener('input', () => { if (input.value !== '') { editedLaps[i] = clamp(+input.value); renderTotal(); } });
-      input.addEventListener('change', () => { editedLaps[i] = clamp(+input.value); input.value = editedLaps[i]; renderTotal(); });
-      input.addEventListener('focus', () => input.select());
+      [minIn, secIn].forEach(inp => {
+        inp.addEventListener('input', () => { editedLaps[i] = fromInputs(); renderTotal(); });
+        inp.addEventListener('change', () => { editedLaps[i] = fromInputs(); show(); renderTotal(); });
+        inp.addEventListener('focus', () => inp.select());
+      });
       rows.appendChild(row);
     });
     $('addBtn').disabled = editedLaps.length >= MAX_LAPS;
