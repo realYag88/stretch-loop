@@ -87,15 +87,49 @@ button:focus-visible, input:focus-visible, .stage:focus-visible {
   justify-content: space-between;
   gap: 12px;
 }
-.brand { font-weight: 700; font-size: 16px; letter-spacing: .04em; }
+.brand-wrap { display: flex; flex-direction: column; min-width: 0; }
+.brand { font-weight: 700; font-size: 16px; letter-spacing: .04em; white-space: nowrap; }
 .round {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
   color: var(--muted);
-  font-size: 14px;
-  margin-left: 8px;
+  font-size: 13px;
   font-weight: 600;
 }
+.sound {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  border-radius: 999px;
+  padding: 0 14px 0 0;
+  flex-shrink: 0;
+}
+.sound .icon-btn { box-shadow: none; background: transparent; }
+.vol {
+  -webkit-appearance: none; appearance: none;
+  width: 96px; height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--lap-1) var(--fill, 70%), var(--track) var(--fill, 70%));
+  outline: none;
+  margin: 0;
+}
+.vol::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg);
+  border: 3px solid var(--lap-1);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.vol::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg);
+  border: 3px solid var(--lap-1);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.vol:focus-visible { outline: 3px solid var(--lap-1); outline-offset: 4px; }
+.sound.muted .vol { opacity: .4; }
 .icon-btn {
   width: 44px; height: 44px;
   border: none;
@@ -217,7 +251,27 @@ button:focus-visible, input:focus-visible, .stage:focus-visible {
 @keyframes up { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
 .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--track); margin: 0 auto; }
 .sheet h2 { margin: 0; font-size: 18px; text-wrap: balance; }
-.sheet .sub { margin: -8px 0 0; font-size: 13px; color: var(--muted); }
+.presets { display: flex; gap: 10px; }
+.preset {
+  flex: 1;
+  min-height: 48px;
+  border: 2px solid var(--surface-2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--font-num); font-weight: 700; font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.preset .num {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface-2);
+  font-size: 13px; font-weight: 800;
+}
+.preset[aria-pressed="true"] { border-color: var(--lap-1); }
+.preset[aria-pressed="true"] .num { background: var(--lap-1); color: var(--bg); }
 .rows { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
 .row {
   display: grid;
@@ -297,10 +351,13 @@ body { margin: 0; }
 <body>
 <main class="app" id="app">
   <header class="top">
-    <div><span class="brand">ストレッチループ</span><span class="round" id="round">1周目</span></div>
-    <button class="icon-btn" id="soundBtn" aria-pressed="true" aria-label="音のオン・オフ">
-      <svg viewBox="0 0 24 24" id="soundIcon"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
-    </button>
+    <div class="brand-wrap"><span class="brand">ストレッチループ</span><span class="round" id="round">1周目</span></div>
+    <div class="sound" id="soundBox">
+      <button class="icon-btn" id="soundBtn" aria-pressed="true" aria-label="音のオン・オフ">
+        <svg viewBox="0 0 24 24" id="soundIcon"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+      </button>
+      <input class="vol" id="vol" type="range" min="0" max="100" step="1" value="70" aria-label="効果音の音量">
+    </div>
   </header>
 
   <section class="stage" id="stage" role="button" tabindex="0" aria-label="タップでスタート・ストップ">
@@ -334,7 +391,10 @@ body { margin: 0; }
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="grab"></div>
     <h2 id="sheetTitle">ラップ設定</h2>
-    <p class="sub">上から順に繰り返します。止めるまでループします。</p>
+    <div class="presets">
+      <button class="preset" data-preset="0" aria-pressed="false" aria-label="テンプレ1 30秒と10秒"><span class="num">1</span>30秒・10秒</button>
+      <button class="preset" data-preset="1" aria-pressed="false" aria-label="テンプレ2 60秒と15秒"><span class="num">2</span>60秒・15秒</button>
+    </div>
     <div class="rows" id="rows"></div>
     <button class="add" id="addBtn">＋ ラップを追加</button>
     <div class="total" id="total"></div>
@@ -362,6 +422,9 @@ body { margin: 0; }
   let laps = load('laps', DEFAULT_LAPS);
   if (!Array.isArray(laps) || !laps.length || laps.some(n => !(n >= 1))) laps = DEFAULT_LAPS.slice();
   let soundOn = load('sound', true) !== false;
+  let volume = Number(load('volume', 70));
+  if (!(volume >= 0 && volume <= 100)) volume = 70;
+  const PRESETS = [[30, 10], [60, 15]];
 
   const st = { running: false, idx: 0, elapsed: 0, startedAt: 0, round: 1, lastTick: null, raf: 0 };
 
@@ -384,7 +447,9 @@ body { margin: 0; }
     o.type = 'sine'; o.frequency.value = freq;
     const t = c.currentTime + start;
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    const v = vol * (volume / 70);
+    if (v <= 0.0002) return;
+    g.gain.exponentialRampToValueAtTime(v, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g).connect(c.destination);
     o.start(t); o.stop(t + dur + 0.05);
@@ -478,7 +543,7 @@ body { margin: 0; }
     roundEl.textContent = `${st.round}周目`;
     app.style.setProperty('--accent', colorOf(st.idx));
     bar.style.strokeDasharray = CIRC;
-    bar.style.strokeDashoffset = CIRC * (el / dur);
+    bar.style.strokeDashoffset = -CIRC * (el / dur);
     stage.classList.toggle('running', st.running);
     hintEl.textContent = st.running ? 'タップで一時停止' : (st.elapsed > 0 ? 'タップで再開' : 'タップでスタート');
   }
@@ -536,10 +601,17 @@ body { margin: 0; }
     $('addBtn').disabled = editedLaps.length >= MAX_LAPS;
     renderTotal();
   }
+  function renderPresets() {
+    document.querySelectorAll('.preset').forEach(b => {
+      const p = PRESETS[+b.dataset.preset];
+      b.setAttribute('aria-pressed', String(JSON.stringify(p) === JSON.stringify(editedLaps)));
+    });
+  }
   function renderTotal() {
     const t = editedLaps.reduce((a, b) => a + b, 0);
     const m = Math.floor(t / 60), s = t % 60;
     $('total').textContent = `1周 ${m ? m + '分' : ''}${s ? s + '秒' : ''}・${editedLaps.length}ラップ`;
+    renderPresets();
   }
 
   /* ---------- Events ---------- */
@@ -557,16 +629,33 @@ body { margin: 0; }
   scrim.addEventListener('click', e => { if (e.target === scrim) closeEditor(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !scrim.hidden) closeEditor(); });
 
-  const soundBtn = $('soundBtn');
+  document.querySelectorAll('.preset').forEach(b => b.addEventListener('click', () => {
+    editedLaps = PRESETS[+b.dataset.preset].slice();
+    renderRows();
+  }));
+
+  const soundBtn = $('soundBtn'), volEl = $('vol'), soundBox = $('soundBox');
+  function renderVol() {
+    volEl.value = volume;
+    volEl.style.setProperty('--fill', volume + '%');
+    soundBox.classList.toggle('muted', !soundOn);
+  }
+  volEl.addEventListener('input', () => {
+    volume = +volEl.value;
+    if (!soundOn && volume > 0) { soundOn = true; save('sound', true); renderSound(); }
+    renderVol();
+  });
+  volEl.addEventListener('change', () => { save('volume', volume); chime(0); });
   function renderSound() {
     soundBtn.setAttribute('aria-pressed', String(soundOn));
+    soundBox.classList.toggle('muted', !soundOn);
     $('soundIcon').innerHTML = soundOn
       ? '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/>'
       : '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/>';
   }
   soundBtn.addEventListener('click', () => { soundOn = !soundOn; save('sound', soundOn); renderSound(); if (soundOn) ensureAudio(); });
 
-  renderSound(); renderStrip(); render();
+  renderSound(); renderVol(); renderStrip(); render();
 })();
 
 if ('serviceWorker' in navigator) {
